@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin Dashboard')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <div class="container py-4">
+        <!-- Alerts -->
+        <div th:if="${successMessage != null}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span th:text="${successMessage}">Success</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage != null}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${errorMessage}">Error</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Admin Banner -->
+        <div class="p-4 mb-4 bg-dark text-white rounded-3 shadow-sm border-start border-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h2 class="h4 mb-1"><i class="bi bi-shield-check text-warning me-2"></i>Administrator Control Panel</h2>
+                    <p class="text-secondary mb-0">Authorized Admin: <strong class="text-light" th:text="${currentUser.name}">Admin</strong> &bull; (<span th:text="${currentUser.email}">admin@lab.edu</span>)</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <form th:action="@{/admin/reset-demo-data}" method="post" onsubmit="return confirm('Reset all equipment to exact Section 5 demo state?');">
+                        <button type="submit" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Section 5 Data
+                        </button>
+                    </form>
+                    <a th:href="@{/admin/bookings}" class="btn btn-warning btn-sm fw-semibold">
+                        <i class="bi bi-card-checklist me-1"></i> View All Bookings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card p-3 stat-card text-center">
+                    <span class="text-muted small text-uppercase fw-bold">Total</span>
+                    <h3 class="mb-0 mt-1 fw-bold" th:text="${totalBookingsCount}">0</h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card p-3 stat-card border-primary text-center">
+                    <span class="text-muted small text-uppercase fw-bold">Confirmed</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-primary" th:text="${confirmedCount}">0</h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card p-3 stat-card border-warning text-center">
+                    <span class="text-muted small text-uppercase fw-bold">Checked-In</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-warning" th:text="${checkedInCount}">0</h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card p-3 stat-card border-success text-center">
+                    <span class="text-muted small text-uppercase fw-bold">Completed</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-success" th:text="${completedCount}">0</h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card p-3 stat-card border-danger text-center">
+                    <span class="text-muted small text-uppercase fw-bold">Cancelled</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-danger" th:text="${cancelledCount}">0</h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="card p-3 stat-card border-info text-center">
+                    <span class="text-muted small text-uppercase fw-bold">Revenue</span>
+                    <h4 class="mb-0 mt-1 fw-bold text-info">Rs. <span th:text="${#numbers.formatDecimal(totalRevenue, 1, 'NONE', 0, 'POINT')}">0</span></h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equipment Slot Status & Rate Adjustment (Support Demonstration T12 & T7) -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-gear-wide-connected text-primary me-2"></i>Laboratory Equipment Configuration &amp; State</h5>
+                <span class="badge bg-light text-secondary border">Live Database State</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ref</th>
+                            <th>Equipment Name</th>
+                            <th>Category</th>
+                            <th>Current Rate (Rs.)</th>
+                            <th>Availability</th>
+                            <th>Test Rate Change (T12)</th>
+                            <th>Test Capacity (T7)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${allResources}">
+                            <td><span class="badge bg-secondary font-monospace" th:text="${r.reference}">R101</span></td>
+                            <td class="fw-semibold" th:text="${r.name}">Equipment Slot A</td>
+                            <td class="text-muted small" th:text="${r.category}">Spectroscopy</td>
+                            <td><strong class="text-primary">Rs. <span th:text="${#numbers.formatDecimal(r.rate, 1, 'COMMA', 2, 'POINT')}">499.00</span></strong></td>
+                            <td>
+                                <span th:if="${r.availability > 0}" class="badge bg-success-subtle text-success border border-success-subtle"
+                                      th:text="${r.availability + ' Units'}">10 Units</span>
+                                <span th:if="${r.availability == 0}" class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                    0 (Fully Booked)
+                                </span>
+                            </td>
+                            <!-- Fast Rate Update Form for T12 demo -->
+                            <td>
+                                <form th:action="@{/admin/resource/{id}/update-rate(id=${r.id})}" method="post" class="d-flex gap-1">
+                                    <input type="number" step="1" name="rate" th:value="${r.rate}" style="width: 90px;" class="form-control form-control-sm" required />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Update Rate to test T12 snapshot retention">Set</button>
+                                </form>
+                            </td>
+                            <!-- Fast Availability Update Form for T7 demo -->
+                            <td>
+                                <form th:action="@{/admin/resource/{id}/update-availability(id=${r.id})}" method="post" class="d-flex gap-1">
+                                    <input type="number" name="availability" th:value="${r.availability}" style="width: 70px;" class="form-control form-control-sm" min="0" required />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Update Capacity to test T7">Set</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history text-primary me-2"></i>Recent Booking Transactions</h5>
+                <a th:href="@{/admin/bookings}" class="btn btn-sm btn-outline-primary">View Full Transaction Register <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Reference</th>
+                            <th>Booked By</th>
+                            <th>Equipment Slot</th>
+                            <th>Date</th>
+                            <th class="text-end">Grand Total</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end">Manage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="b, iter : ${allBookings}" th:if="${iter.index < 5}">
+                            <td><code class="fw-bold text-dark" th:text="${b.reference}">RES-001</code></td>
+                            <td>
+                                <span class="fw-semibold" th:text="${b.user.name}">John Doe</span>
+                                <div class="text-muted small" th:text="${b.user.email}">user@lab.edu</div>
+                            </td>
+                            <td>
+                                <span th:each="it : ${b.items}" th:text="${it.resourceNameSnapshot}">Equipment Slot</span>
+                            </td>
+                            <td th:text="${b.bookingDate}">2026-10-08</td>
+                            <td class="text-end fw-bold text-dark">Rs. <span th:text="${#numbers.formatDecimal(b.grandTotal, 1, 'COMMA', 2, 'POINT')}">549.00</span></td>
+                            <td class="text-center">
+                                <span th:if="${b.status.name() == 'CONFIRMED'}" class="badge badge-confirmed" th:text="${b.status.displayName}">CONFIRMED</span>
+                                <span th:if="${b.status.name() == 'CHECKED_IN'}" class="badge badge-checked-in" th:text="${b.status.displayName}">CHECKED_IN / BOARDED</span>
+                                <span th:if="${b.status.name() == 'COMPLETED'}" class="badge badge-completed" th:text="${b.status.displayName}">COMPLETED</span>
+                                <span th:if="${b.status.name() == 'CANCELLED'}" class="badge badge-cancelled" th:text="${b.status.displayName}">CANCELLED</span>
+                            </td>
+                            <td class="text-end">
+                                <a th:href="@{/admin/booking/{id}(id=${b.id})}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-sliders me-1"></i> Update Status
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${allBookings.isEmpty()}">
+                            <td colspan="7" class="text-center py-4 text-muted">No reservations recorded yet in the database.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

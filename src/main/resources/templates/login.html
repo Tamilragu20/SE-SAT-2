@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Login')}"></head>
+<body class="bg-light">
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-7 col-lg-5">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-dark text-white text-center py-3">
+                        <h4 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Lab Portal Sign In</h4>
+                        <small class="text-secondary">Software Engineering SAT-II Assessment</small>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Error Alert -->
+                        <div th:if="${errorMessage != null}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <span th:text="${errorMessage}">Error</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <!-- Success Alert -->
+                        <div th:if="${successMessage != null}" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <span th:text="${successMessage}">Success</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+
+                        <form th:action="@{/login}" method="post">
+                            <div class="mb-3">
+                                <label for="email" class="form-label fw-semibold">Email Address</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" class="form-control" id="email" name="email"
+                                           placeholder="e.g. user1@lab.edu" required autofocus>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="password" class="form-label fw-semibold">Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-key"></i></span>
+                                    <input type="password" class="form-control" id="password" name="password"
+                                           placeholder="Enter password" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Quick Demonstration Logins Card -->
+                <div class="card shadow-sm border-0 border-top border-4 border-info">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold text-uppercase text-secondary mb-3">
+                            <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Demo Access
+                        </h6>
+                        <p class="small text-muted mb-3">
+                            Click any demo account below to instantly authenticate and evaluate requirements:
+                        </p>
+                        <div class="d-grid gap-2">
+                            <a th:href="@{/quick-login(email='user1@lab.edu')}" class="btn btn-outline-primary btn-sm text-start py-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-person-fill me-1"></i> <strong>John Doe</strong> (user1@lab.edu)
+                                </div>
+                                <span class="badge bg-primary">USER</span>
+                            </a>
+                            <a th:href="@{/quick-login(email='user2@lab.edu')}" class="btn btn-outline-primary btn-sm text-start py-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-person-fill me-1"></i> <strong>Jane Smith</strong> (user2@lab.edu)
+                                </div>
+                                <span class="badge bg-primary">USER</span>
+                            </a>
+                            <a th:href="@{/quick-login(email='admin@lab.edu')}" class="btn btn-outline-dark btn-sm text-start py-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-shield-shaded me-1"></i> <strong>Lab Administrator</strong> (admin@lab.edu)
+                                </div>
+                                <span class="badge bg-dark">ADMINISTRATOR</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

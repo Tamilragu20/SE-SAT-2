@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Transaction Register & Status Management')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h3 class="fw-bold mb-1"><i class="bi bi-card-checklist text-primary me-2"></i>All Booking Transactions</h3>
+                <p class="text-muted mb-0">Administrator ledger of all laboratory equipment reservations &bull; Strict status flow (FR7, BR8)</p>
+            </div>
+            <a th:href="@{/admin/dashboard}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Admin Dashboard
+            </a>
+        </div>
+
+        <!-- Alerts -->
+        <div th:if="${successMessage != null}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span th:text="${successMessage}">Success</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage != null}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${errorMessage}">Error</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Strict Transition Rule Alert Box (FR7 & BR8) -->
+        <div class="alert alert-info border-info-subtle mb-4 shadow-sm">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill fs-5 me-2 text-info"></i>
+                <div class="small">
+                    <strong>FR7 / BR8 Enforced Status Flow:</strong>
+                    <code>CONFIRMED</code> &rarr; <code>CHECKED_IN / BOARDED</code> &rarr; <code>COMPLETED</code>.
+                    Skipping or moving backward is strictly prohibited by backend validation.
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive" th:if="${!bookings.isEmpty()}">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Reference</th>
+                                <th>User</th>
+                                <th>Equipment Slot</th>
+                                <th>Date</th>
+                                <th class="text-center">Units</th>
+                                <th class="text-end">Grand Total</th>
+                                <th class="text-center">Current Status</th>
+                                <th class="text-end">Advance Status (FR7)</th>
+                                <th class="text-end">Audit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="b : ${bookings}">
+                                <td>
+                                    <code class="fw-bold text-dark" th:text="${b.reference}">RES-001</code>
+                                    <div class="text-muted small" th:text="${#temporals.format(b.createdAt, 'dd MMM, HH:mm')}">08 Oct, 12:00</div>
+                                </td>
+                                <td>
+                                    <strong th:text="${b.user.name}">John Doe</strong>
+                                    <div class="text-muted small font-monospace" th:text="${b.contactPhone}">9876543210</div>
+                                </td>
+                                <td>
+                                    <div th:each="it : ${b.items}">
+                                        <span class="badge bg-secondary font-monospace me-1" th:text="${it.resourceRefSnapshot}">R101</span>
+                                        <span th:text="${it.resourceNameSnapshot}">Equipment Slot A</span>
+                                    </div>
+                                </td>
+                                <td th:text="${b.bookingDate}">2026-10-08</td>
+                                <td class="text-center">
+                                    <span th:each="it : ${b.items}" class="badge bg-light text-dark border px-2 py-1" th:text="${it.quantity}">1</span>
+                                </td>
+                                <td class="text-end fw-bold text-dark">Rs. <span th:text="${#numbers.formatDecimal(b.grandTotal, 1, 'COMMA', 2, 'POINT')}">549.00</span></td>
+                                <td class="text-center">
+                                    <span th:if="${b.status.name() == 'CONFIRMED'}" class="badge badge-confirmed px-2 py-1" th:text="${b.status.displayName}">CONFIRMED</span>
+                                    <span th:if="${b.status.name() == 'CHECKED_IN'}" class="badge badge-checked-in px-2 py-1" th:text="${b.status.displayName}">CHECKED_IN / BOARDED</span>
+                                    <span th:if="${b.status.name() == 'COMPLETED'}" class="badge badge-completed px-2 py-1" th:text="${b.status.displayName}">COMPLETED</span>
+                                    <span th:if="${b.status.name() == 'CANCELLED'}" class="badge badge-cancelled px-2 py-1" th:text="${b.status.displayName}">CANCELLED</span>
+                                </td>
+
+                                <!-- Advance Status Column -->
+                                <td class="text-end">
+                                    <!-- If CONFIRMED: next is CHECKED_IN -->
+                                    <form th:if="${b.status.name() == 'CONFIRMED'}" th:action="@{/admin/booking/{id}/update-status(id=${b.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="status" value="CHECKED_IN" />
+                                        <input type="hidden" name="redirectPage" value="list" />
+                                        <button type="submit" class="btn btn-warning btn-sm fw-semibold text-dark">
+                                            <i class="bi bi-box-arrow-in-right me-1"></i> Check In / Board
+                                        </button>
+                                    </form>
+
+                                    <!-- If CHECKED_IN: next is COMPLETED -->
+                                    <form th:if="${b.status.name() == 'CHECKED_IN'}" th:action="@{/admin/booking/{id}/update-status(id=${b.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="status" value="COMPLETED" />
+                                        <input type="hidden" name="redirectPage" value="list" />
+                                        <button type="submit" class="btn btn-success btn-sm fw-semibold">
+                                            <i class="bi bi-check-all me-1"></i> Complete Slot
+                                        </button>
+                                    </form>
+
+                                    <!-- If COMPLETED or CANCELLED -->
+                                    <span th:if="${b.status.name() == 'COMPLETED'}" class="badge bg-light text-success border">
+                                        <i class="bi bi-check2"></i> Finished
+                                    </span>
+                                    <span th:if="${b.status.name() == 'CANCELLED'}" class="badge bg-light text-danger border">
+                                        <i class="bi bi-slash-circle"></i> Cancelled
+                                    </span>
+                                </td>
+
+                                <td class="text-end">
+                                    <a th:href="@{/admin/booking/{id}(id=${b.id})}" class="btn btn-outline-secondary btn-sm" title="View Details and History">
+                                        <i class="bi bi-clock-history"></i> Log
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:if="${bookings.isEmpty()}" class="text-center py-5">
+                    <i class="bi bi-folder2-open text-muted display-4 mb-3 d-block"></i>
+                    <h5 class="fw-bold">No Transactions Recorded</h5>
+                    <p class="text-muted">No reservations have been placed yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

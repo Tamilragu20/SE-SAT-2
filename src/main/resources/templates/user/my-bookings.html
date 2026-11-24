@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('My Bookings')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h3 class="fw-bold mb-1"><i class="bi bi-calendar2-check text-primary me-2"></i>My Equipment Reservations</h3>
+                <p class="text-muted mb-0">Manage and track your active and past laboratory bookings (FR6: User-scoped view)</p>
+            </div>
+            <a th:href="@{/equipment}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> New Booking
+            </a>
+        </div>
+
+        <!-- Alerts -->
+        <div th:if="${successMessage != null}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span th:text="${successMessage}">Success</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage != null}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${errorMessage}">Error</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Bookings Table -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive" th:if="${!bookings.isEmpty()}">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Reference</th>
+                                <th>Date</th>
+                                <th>Equipment Slot</th>
+                                <th class="text-center">Units</th>
+                                <th class="text-end">Base Amount</th>
+                                <th class="text-end">Charge</th>
+                                <th class="text-end">Grand Total</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="b : ${bookings}">
+                                <td>
+                                    <code class="fw-bold text-primary" th:text="${b.reference}">RES-001</code>
+                                    <div class="text-muted small" th:text="${#temporals.format(b.createdAt, 'dd MMM, HH:mm')}">08 Oct, 12:00</div>
+                                </td>
+                                <td class="fw-semibold" th:text="${b.bookingDate}">2026-10-08</td>
+                                <td>
+                                    <div th:each="it : ${b.items}">
+                                        <span class="badge bg-secondary font-monospace me-1" th:text="${it.resourceRefSnapshot}">R101</span>
+                                        <strong th:text="${it.resourceNameSnapshot}">Equipment Slot A</strong>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span th:each="it : ${b.items}" class="badge bg-light text-dark border px-2 py-1" th:text="${it.quantity}">1</span>
+                                </td>
+                                <td class="text-end text-muted">Rs. <span th:text="${#numbers.formatDecimal(b.baseAmount, 1, 'COMMA', 2, 'POINT')}">499.00</span></td>
+                                <td class="text-end text-muted">Rs. <span th:text="${#numbers.formatDecimal(b.bookingCharge, 1, 'COMMA', 2, 'POINT')}">50.00</span></td>
+                                <td class="text-end fw-bold text-dark">Rs. <span th:text="${#numbers.formatDecimal(b.grandTotal, 1, 'COMMA', 2, 'POINT')}">549.00</span></td>
+                                <td class="text-center">
+                                    <span th:if="${b.status.name() == 'CONFIRMED'}" class="badge badge-confirmed px-2 py-1" th:text="${b.status.displayName}">CONFIRMED</span>
+                                    <span th:if="${b.status.name() == 'CHECKED_IN'}" class="badge badge-checked-in px-2 py-1" th:text="${b.status.displayName}">CHECKED_IN / BOARDED</span>
+                                    <span th:if="${b.status.name() == 'COMPLETED'}" class="badge badge-completed px-2 py-1" th:text="${b.status.displayName}">COMPLETED</span>
+                                    <span th:if="${b.status.name() == 'CANCELLED'}" class="badge badge-cancelled px-2 py-1" th:text="${b.status.displayName}">CANCELLED</span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1">
+                                        <a th:href="@{/booking/{id}(id=${b.id})}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                            <i class="bi bi-eye"></i> Details
+                                        </a>
+
+                                        <!-- User Cancellation (FR8, BR9): only allowed if CONFIRMED -->
+                                        <form th:if="${b.status.name() == 'CONFIRMED'}" th:action="@{/booking/{id}/cancel(id=${b.id})}" method="post"
+                                              onsubmit="return confirm('Are you sure you want to cancel this reservation? Equipment availability will be restored.');"
+                                              class="d-inline">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Cancel Booking">
+                                                <i class="bi bi-x-circle"></i> Cancel
+                                            </button>
+                                        </form>
+
+                                        <button th:if="${b.status.name() != 'CONFIRMED'}" class="btn btn-outline-secondary btn-sm" disabled
+                                                title="Only CONFIRMED bookings can be cancelled">
+                                            <i class="bi bi-slash-circle"></i> Cancel
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div th:if="${bookings.isEmpty()}" class="text-center py-5">
+                    <i class="bi bi-inbox text-muted display-4 mb-3 d-block"></i>
+                    <h5 class="fw-bold">No Bookings Found</h5>
+                    <p class="text-muted">You haven't made any laboratory equipment reservations yet.</p>
+                    <a th:href="@{/equipment}" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i> Browse Equipment Slots</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

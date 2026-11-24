@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin Booking Audit & Transition')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold mb-1"><i class="bi bi-shield-shaded text-primary me-2"></i>Booking Management &amp; Audit Trail</h3>
+                <span class="text-muted small">Reference: <code class="fw-bold text-dark" th:text="${reservation.reference}">RES-001</code></span>
+            </div>
+            <a th:href="@{/admin/bookings}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Transaction List
+            </a>
+        </div>
+
+        <!-- Alerts -->
+        <div th:if="${successMessage != null}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span th:text="${successMessage}">Success</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage != null}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${errorMessage}">Error</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left: Booking Snapshot & Status Transition Panel -->
+            <div class="col-lg-7">
+                <!-- Status Control Card -->
+                <div class="card shadow-sm border-0 mb-4 border-top border-4 border-warning">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-sliders text-warning me-2"></i>Status Transition Control (FR7, BR8)</h5>
+                        <span th:if="${reservation.status.name() == 'CONFIRMED'}" class="badge badge-confirmed px-3 py-2" th:text="${reservation.status.displayName}">CONFIRMED</span>
+                        <span th:if="${reservation.status.name() == 'CHECKED_IN'}" class="badge badge-checked-in px-3 py-2" th:text="${reservation.status.displayName}">CHECKED_IN / BOARDED</span>
+                        <span th:if="${reservation.status.name() == 'COMPLETED'}" class="badge badge-completed px-3 py-2" th:text="${reservation.status.displayName}">COMPLETED</span>
+                        <span th:if="${reservation.status.name() == 'CANCELLED'}" class="badge badge-cancelled px-3 py-2" th:text="${reservation.status.displayName}">CANCELLED</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="p-3 bg-light rounded-3 mb-4">
+                            <div class="small fw-bold text-muted text-uppercase mb-2">Required Flow (BR8):</div>
+                            <div class="d-flex align-items-center gap-2 small">
+                                <span class="badge" th:classappend="${reservation.status.name() == 'CONFIRMED' ? 'bg-primary' : 'bg-secondary'}">1. CONFIRMED</span>
+                                <i class="bi bi-arrow-right"></i>
+                                <span class="badge" th:classappend="${reservation.status.name() == 'CHECKED_IN' ? 'bg-warning text-dark' : 'bg-secondary'}">2. CHECKED_IN / BOARDED</span>
+                                <i class="bi bi-arrow-right"></i>
+                                <span class="badge" th:classappend="${reservation.status.name() == 'COMPLETED' ? 'bg-success' : 'bg-secondary'}">3. COMPLETED</span>
+                            </div>
+                        </div>
+
+                        <!-- Option A: Valid Next Transition Button -->
+                        <div th:if="${nextStatus != null}" class="mb-4">
+                            <label class="form-label fw-bold">Authorized Next Valid Action:</label>
+                            <form th:action="@{/admin/booking/{id}/update-status(id=${reservation.id})}" method="post">
+                                <input type="hidden" name="status" th:value="${nextStatus}" />
+                                <button type="submit" class="btn btn-warning w-100 py-2 fw-semibold text-dark">
+                                    <i class="bi bi-arrow-right-circle-fill me-1"></i>
+                                    Advance to <span th:text="${nextStatus.displayName}">Next Status</span>
+                                </button>
+                            </form>
+                        </div>
+                        <div th:if="${nextStatus == null}" class="alert alert-secondary py-2 small mb-4">
+                            <i class="bi bi-check2-all me-1"></i> This booking is in terminal state (<span th:text="${reservation.status.displayName}"></span>). No further advancement allowed.
+                        </div>
+
+                        <!-- Option B: Test Invalid Transition (Demonstrate T9: Skipping / Backward Rejection) -->
+                        <div class="border-top pt-3">
+                            <h6 class="fw-bold text-danger small text-uppercase mb-2">
+                                <i class="bi bi-bug-fill me-1"></i> Assessment Demonstration: Test Status Skipping/Invalid Transition (T9)
+                            </h6>
+                            <p class="text-muted small mb-2">
+                                Attempt an unauthorized or skipped status transition to verify backend validation and rejection:
+                            </p>
+                            <form th:action="@{/admin/booking/{id}/update-status(id=${reservation.id})}" method="post" class="row g-2 align-items-center">
+                                <div class="col-8">
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option th:each="st : ${allStatuses}" th:value="${st}"
+                                                th:text="${st.displayName}">
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                        Test Transition
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking Details Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-card-text text-primary me-2"></i>Reservation Metadata &amp; Snapshots</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3 mb-3 small">
+                            <div class="col-6">
+                                <span class="text-muted d-block">Client Name:</span>
+                                <strong th:text="${reservation.contactName}">John Doe</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Client Phone:</span>
+                                <strong class="font-monospace" th:text="${reservation.contactPhone}">9876543210</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">User Account Email:</span>
+                                <span th:text="${reservation.user.email}">user@lab.edu</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Scheduled Date:</span>
+                                <span th:text="${reservation.bookingDate}">2026-10-08</span>
+                            </div>
+                        </div>
+
+                        <!-- Items Snapshot Table -->
+                        <div class="table-responsive mb-3">
+                            <table class="table table-bordered table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Ref</th>
+                                        <th>Equipment Name</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Fare Snapshot</th>
+                                        <th class="text-end">Base Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="it : ${reservation.items}">
+                                        <td><code th:text="${it.resourceRefSnapshot}">R101</code></td>
+                                        <td th:text="${it.resourceNameSnapshot}">Equipment Slot A</td>
+                                        <td class="text-center" th:text="${it.quantity}">1</td>
+                                        <td class="text-end">Rs. <span th:text="${#numbers.formatDecimal(it.rateSnapshot, 1, 'COMMA', 2, 'POINT')}">499.00</span></td>
+                                        <td class="text-end">Rs. <span th:text="${#numbers.formatDecimal(it.baseAmount, 1, 'COMMA', 2, 'POINT')}">499.00</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded-3">
+                            <span class="fw-bold">Grand Total (incl. Rs. <span th:text="${reservation.bookingCharge}"></span> fee):</span>
+                            <span class="fs-5 fw-bold text-success">Rs. <span th:text="${#numbers.formatDecimal(reservation.grandTotal, 1, 'COMMA', 2, 'POINT')}">549.00</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Audit Trail History Log (FR10) -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-primary me-2"></i>Audit History Log</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="timeline" th:if="${!history.isEmpty()}">
+                            <div th:each="h : ${history}" class="mb-3 pb-3 border-bottom border-light">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-dark" th:text="${h.newStatus}">CONFIRMED</span>
+                                    <small class="text-muted" th:text="${#temporals.format(h.eventAt, 'dd MMM yyyy, HH:mm:ss')}">08 Oct 12:00:00</small>
+                                </div>
+                                <div class="small text-muted mt-2">
+                                    <span th:if="${h.oldStatus != null}">
+                                        Transitioned from <code th:text="${h.oldStatus}">OLD</code> &rarr; <code th:text="${h.newStatus}">NEW</code>
+                                    </span>
+                                    <span th:if="${h.oldStatus == null}">
+                                        Initial status created
+                                    </span>
+                                </div>
+                                <div class="small text-dark mt-1">
+                                    <i class="bi bi-person-badge text-secondary me-1"></i> <strong th:text="${h.actor}">Actor</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

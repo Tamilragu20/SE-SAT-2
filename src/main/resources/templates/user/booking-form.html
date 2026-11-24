@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Book Equipment Slot')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <div class="container py-4">
+        <!-- Breadcrumb -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold mb-1"><i class="bi bi-calendar2-plus text-primary me-2"></i>Configure Slot Reservation</h3>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0 small">
+                        <li class="breadcrumb-item"><a th:href="@{/equipment}">Search Availability</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Equipment Booking</li>
+                    </ol>
+                </nav>
+            </div>
+            <a th:href="@{/equipment}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-circle me-1"></i> Cancel
+            </a>
+        </div>
+
+        <!-- Error Message Alert -->
+        <div th:if="${errorMessage != null}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill fs-4 me-3 text-danger"></i>
+                <div>
+                    <strong>Validation Error:</strong>
+                    <div th:text="${errorMessage}">Validation Error Details</div>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Column: Booking Form -->
+            <div class="col-lg-7">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Reservation Details</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form th:action="@{/book}" th:object="${bookingForm}" method="post" id="bookingFormElem">
+                            <input type="hidden" th:field="*{resourceId}" />
+
+                            <!-- Contact Name (BR5) -->
+                            <div class="mb-3">
+                                <label for="contactName" class="form-label fw-semibold">
+                                    Full Name <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                    <input type="text" class="form-control" id="contactName" th:field="*{contactName}"
+                                           placeholder="Enter reservation contact person name" required>
+                                </div>
+                                <div class="form-text">Name cannot be blank (BR5).</div>
+                            </div>
+
+                            <!-- Contact Phone (BR5: exactly 10 digits) -->
+                            <div class="mb-3">
+                                <label for="contactPhone" class="form-label fw-semibold">
+                                    Phone Number (10 Digits) <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                    <input type="tel" class="form-control" id="contactPhone" th:field="*{contactPhone}"
+                                           placeholder="10-digit mobile number, e.g. 9876543210" pattern="[0-9]{10}"
+                                           maxlength="10" required>
+                                </div>
+                                <div class="form-text">Phone must contain exactly 10 digits (BR5).</div>
+                            </div>
+
+                            <!-- Booking Date -->
+                            <div class="mb-3">
+                                <label for="bookingDate" class="form-label fw-semibold">
+                                    Booking Date <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                                    <input type="date" class="form-control" id="bookingDate" th:field="*{bookingDate}" required>
+                                </div>
+                            </div>
+
+                            <!-- Preferred Schedule Slot -->
+                            <div class="mb-3" th:if="${!schedules.isEmpty()}">
+                                <label for="scheduleId" class="form-label fw-semibold">
+                                    Laboratory Time Slot Schedule
+                                </label>
+                                <select class="form-select" id="scheduleId" th:field="*{scheduleId}">
+                                    <option th:each="s : ${schedules}" th:value="${s.id}"
+                                            th:text="${s.reference + ' &mdash; ' + s.formattedSchedule}">
+                                        SCH-01 - 09:00 - 11:00
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Quantity Selection (BR1: 1 to 5 units) -->
+                            <div class="mb-4">
+                                <label for="quantityInput" class="form-label fw-semibold d-flex justify-content-between">
+                                    <span>Quantity (Slots / Units) <span class="text-danger">*</span></span>
+                                    <span class="text-muted small">Allowed: 1 to 5</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-layers"></i></span>
+                                    <input type="number" class="form-control" id="quantityInput" th:field="*{quantityInput}"
+                                           min="1" max="5" step="1" required>
+                                </div>
+                                <div class="form-text text-muted">
+                                    Must be between 1 and 5. Zero, negative, decimal, non-numeric, or >5 values will be rejected (BR1).
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold fs-6" id="btnConfirmBooking">
+                                <i class="bi bi-check2-circle me-1"></i> Confirm Reservation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Equipment Summary & Real-time Amount Calculation (FR3, BR4) -->
+            <div class="col-lg-5">
+                <!-- Selected Equipment Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-dark text-white py-3">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-hdd-fill me-2 text-info"></i>Selected Equipment Slot</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark mb-0" th:text="${resource.name}">Equipment Slot A</h5>
+                            <span class="badge bg-secondary font-monospace" th:text="${resource.reference}">R101</span>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            <strong>Category:</strong> <span th:text="${resource.category}">Centrifuge</span>
+                        </p>
+                        <div class="d-flex justify-content-between py-2 border-top border-bottom small">
+                            <span class="text-muted">Unit Rate:</span>
+                            <span class="fw-bold text-dark">Rs. <span id="unitRateDisplay" th:text="${resource.rate}">499.00</span></span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom small">
+                            <span class="text-muted">Current Availability:</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle"
+                                  th:text="${resource.availability + ' Units'}">10 Units</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Calculation Box (FR3, BR4) -->
+                <div class="card shadow-sm border-0 border-top border-4 border-primary">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-calculator me-2"></i>Amount Breakdown (FR3)</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Base Amount:</span>
+                            <span class="fw-semibold">Rs. <span id="baseAmountDisplay">499.00</span></span>
+                        </div>
+                        <div class="text-muted small mb-3 fst-italic">
+                            Formula: Unit Rate &times; Quantity
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Booking Charge:</span>
+                            <span class="fw-semibold text-warning-emphasis">Rs. <span id="bookingChargeDisplay">50.00</span></span>
+                        </div>
+                        <div class="text-muted small mb-3 fst-italic">
+                            Rule: Rs.50 if Base &lt; Rs.1,000; Rs.0 if Base &ge; Rs.1,000
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between align-items-center pt-2">
+                            <span class="fw-bold fs-5 text-dark">Grand Total:</span>
+                            <span class="price-tag text-success fs-4 fw-bold">Rs. <span id="grandTotalDisplay">549.00</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:replace="~{fragments/layout :: scripts}"></script>
+
+    <!-- Dynamic Amount Calculation Script (FR3 & BR4) -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const unitRate = /*[[${resource.rate}]]*/ 499.00;
+
+        function recalculate() {
+            const quantityInput = document.getElementById('quantityInput').value;
+            const q = parseFloat(quantityInput);
+
+            if (isNaN(q) || q <= 0) {
+                document.getElementById('baseAmountDisplay').innerText = "0.00";
+                document.getElementById('bookingChargeDisplay').innerText = "0.00";
+                document.getElementById('grandTotalDisplay').innerText = "0.00";
+                return;
+            }
+
+            const baseAmount = unitRate * q;
+            // BR4 rule: Rs.50 if base < 1000, else Rs.0
+            const bookingCharge = baseAmount < 1000.0 ? 50.0 : 0.0;
+            const grandTotal = baseAmount + bookingCharge;
+
+            document.getElementById('baseAmountDisplay').innerText = baseAmount.toFixed(2);
+            document.getElementById('bookingChargeDisplay').innerText = bookingCharge.toFixed(2);
+            document.getElementById('grandTotalDisplay').innerText = grandTotal.toFixed(2);
+        }
+
+        document.getElementById('quantityInput').addEventListener('input', recalculate);
+        document.addEventListener('DOMContentLoaded', recalculate);
+        /*]]>*/
+    </script>
+</body>
+</html>

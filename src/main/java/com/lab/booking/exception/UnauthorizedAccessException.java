@@ -1,0 +1,7 @@
+package com.lab.booking.exception;
+
+public class UnauthorizedAccessException extends BusinessRuleException {
+    public UnauthorizedAccessException(String message) {
+        super(message);
+    }
+}
